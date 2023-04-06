@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarCraftDodge</title>
+    <style>
+        body {
+            margin: 0px;
+        }
+
+        #clock {
+            width: 250px;
+            height: 40px;
+            position: absolute;
+
+        }
+    </style>
+    
+    <script src="../project/lib/util.js"></script>
+    <script src="../project/classes/Hero.js"></script>
+    <script src="../project/classes/bullet.js"></script>
+    <script src="../project/classes/Enemy.js"></script>
+    <script src="../project/classes/nuclear.js"></script>
+    <script>
+        let wrapper;
+        let hero;
+        let stage;
+        let hpArea;
+        let flag = true;
+        let bulletArray = [];
+        let enemyArray = [];
+        let enemyNameArray = [
+            ["observer.png"],
+            ["mutal.png"],
+            ["carrier.png"],
+            ["inter.png"]
+        ];
+        let bgArray = ["space1.jpg", "space2.jpg", "space3.jpg"];
+
+        let clock;
+        let min;
+        let sec;
+        let time = 10; //stage1 시간
+        let startClock;
+        let stopClock;
+        let pause;
+        let gameLoopStart;
+        let startEnemy;
+        let vicImg;
+        let dfImg;
+        let enemy;
+        let startBg;
+        let level = 0;
+
+
+        //시작화면
+        function startGame() {
+            //스타트 영역           
+            flag = !flag
+
+            startBg = document.getElementById("startBg");
+            startBg.style.width = 700 + "px";
+            startBg.style.height = 700 + "px";
+            startBg.style.left = 250 + "px";
+            startBg.style.margin = 50 + "px";
+            startBg.style.position = "absolute";
+            startBg.style.float = "left";
+            startBg.style.background = "url(../images/starcraft/start.png)";
+            clock.style.opacity=0;
+            
+            
+        }
+
+        //다음 스테이지
+        function nextStage() {
+
+            if (time == 0 && level < 2) {
+                level++;
+                flag = !flag;
+                time = (5* (level + 1)); //스테이지2부터 시간
+                vicImg.style.opacity = 0; 
+                timeCheck();
+                createEnemy();
+                gameLoop();
+                stage.style.background = "url(../images/starcraft/" + bgArray[level] + ")";
+            }
+            else if (level >= 2) {
+
+                alert("모든 스테이지를 클리어하셨습니다!!");
+                document.location.reload();
+            }
+        }
+
+
+        //패배 이미지 출력
+        function defeat() {
+
+            dfImg = document.getElementById("def");
+            dfImg.style.width = 400 + "px";
+            dfImg.style.height = 500 + "px";
+            dfImg.style.left = 400 + "px"
+            dfImg.style.top = 200 + "px";
+            dfImg.style.position = "absolute";
+            dfImg.style.float = "left";
+            dfImg.style.background = "url(../images/starcraft/def.png)";
+
+
+        }
+
+        //클리어 이미지 출력
+        function victory() {
+
+            if (time == 0) {
+
+                vicImg = document.getElementById("vic");
+                vicImg.style.width = 400 + "px";
+                vicImg.style.height = 500 + "px";
+                vicImg.style.left = 400 + "px"
+                vicImg.style.top = 200 + "px";
+                vicImg.style.position = "absolute";
+                vicImg.style.float = "left";
+                vicImg.style.background = "url(../images/starcraft/vic2.png)";
+                vicImg.style.opacity = 1;
+                flag = !flag
+                clearInterval(startEnemy);
+                clearInterval(gameLoopStart);
+
+
+            }
+        }
+
+        //일시정지
+        function pauseStart() {
+            pause = document.getElementById("pause");
+            pause.style.width = 400 + "px";
+            pause.style.height = 500 + "px";
+            pause.style.left = 400 + "px"
+            pause.style.top = 200 + "px";
+            pause.style.position = "absolute";
+            pause.style.float = "left";
+            pause.style.backgroundImage = "url(../images/starcraft/pause.png)";
+            pause.style.opacity = 1;
+            clearInterval(startClock);
+            clearInterval(startEnemy);
+            clearInterval(gameLoopStart);
+
+            if (flag = !flag) {
+                timeCheck();
+                createEnemy();
+                gameLoop();
+                pause.style.opacity = 0;
+                clock.style.opacity=1; 
+         
+            }
+
+        }
+
+
+        //시계 영역
+        function timeCheck() {
+            if (time > 0 && flag) {
+
+                min = parseInt(time / 60);
+                sec = time % 60;
+                time--;
+                //console.log(time);
+                startClock = setTimeout("timeCheck()", 1000);
+
+                document.getElementById("clock").innerHTML = "Stage" + [level + 1] + "\n" + min + "분" + sec + "초";
+            }
+            else if (time == 0) {
+                clearInterval(startClock);
+                //console.log("몇번");
+                document.getElementById("clock").innerHTML = "Stage" + [level + 1] + "\n" + "Clear";
+                victory();
+            }
+
+        }
+
+        //공격무기 활성화
+        function switchOn() {
+            document.body.addEventListener("keydown", function (e) {
+
+                switch(e.keyCode) {
+                    case 32: fire(); break;
+                    case 78: nuclear(); break;
+                }
+            });
+        }
+
+        //기체 제어
+        function moveX(n) {
+            hero.velX = n;
+        }
+
+        function moveY(n) {
+            hero.velY = n;
+        }
+
+        //총알발사하기
+        function fire() {
+            bulletArray.push(new Bullet(stage, "../images/starcraft/laser.png", hero.x - 7, hero.y - (20),40 , 40, 0, -10));
+            bulletArray.push(new Bullet(stage, "../images/starcraft/laser.png", hero.x + 30, hero.y - (20), 40, 40, 0, -10));
+        }
+
+        function nuclear(){
+            bulletArray.push(new Nuclear(stage,"../images/starcraft/bullet.png", hero.x -4, hero.y -20, 100, 100, 0, -5));
+        }
+
+        //주인공 출현        
+        //constructor(container, src, x, y, width, height, velX, velY)
+        function createHero() {
+            hero = new Hero(stage, "../images/starcraft/wraith.png", 450, 650, 50, 50, 0, 0);
+        }
+
+        //적군개체 등장
+        function createEnemy() {
+            //constructor(container, src, x, y, width, height, velX, velY)
+            let x = getRandomWithRange(-400, 0);
+            let y = getRandomWithRange(-800, 0);         
+
+            if(level<2){
+
+                enemy = new Enemy(stage, "../images/starcraft/" + enemyNameArray[level][0], x, y, 55, 55, getRandomWithRange(1, 3), getRandomWithRange(1, 3));
+                enemyArray.push(enemy);
+
+                for (let i = 0; i < enemyNameArray[level].length; i++) {
+                    startEnemy = setTimeout("createEnemy(" + i + ")", 190 - [level * 3]);
+                }
+            }
+            else {
+                for(let a=2; a<4; a++){
+
+                    enemy = new Enemy(stage, "../images/starcraft/" + enemyNameArray[a][0], x, y, 55, 55, getRandomWithRange(1, 3), getRandomWithRange(1, 3));
+                    enemyArray.push(enemy);
+                }
+
+                for (let i = 0; i < enemyNameArray[level].length; i++) {
+                    startEnemy = setTimeout("createEnemy(" + i + ")", 190 - [level * 3]);
+                }
+            }
+
+        }
+
+        function gameLoop() {
+
+            if (flag) {
+
+                startBg.remove();
+                //console.log("??gameLoop()")
+
+                //주인공
+                hero.tick();
+                hero.render();
+
+                //총알루프
+                for (let i = 0; i < bulletArray.length; i++) {
+
+                    bulletArray[i].tick();
+                    bulletArray[i].render();
+                }
+
+
+                //적군 루프 호출
+                for (let i = 0; i < enemyArray.length; i++) {
+                    enemyArray[i].tick();
+                    enemyArray[i].render();
+                }
+
+
+            }
+
+            gameLoopStart = setTimeout("gameLoop()", 10); //fps
+        }
+
+        function init() {
+
+            //스테이지 영역
+            stage = document.getElementById("stage");
+
+            stage.style.width = 1200 + "px";
+            stage.style.height = 850 + "px";
+            stage.style.position = "absolute";
+            stage.style.overflow = "hidden";
+            stage.style.background = "url(../images/starcraft/" + bgArray[level] + ")";
+            stage.style.float = "left";
+
+
+            //시계 영역
+            clock = document.getElementById("clock");
+            
+            clock.style.left = 500 + "px";
+            clock.style.top = 0 + "px";
+            clock.style.border = "2px solid yellow";
+            clock.style.position = "absolute";
+            clock.style.margin = "auto";
+            clock.style.textAlign = "center";
+            clock.style.fontSize = "20px";
+            clock.style.fontWeight = "600";
+            clock.style.color = "yellow"
+            clock.style.float = "left";
+        
+
+            //래퍼 영역
+            wrapper = document.getElementById("wrapper");
+
+            wrapper.style.width = 1200 + "px";
+            wrapper.style.height = 850 + "px";
+            wrapper.style.position = "relative";
+            wrapper.style.margin = "auto";
+            wrapper.style.background = "yellow"
+            wrapper.style.overflow = "hidden";
+            startGame();
+            gameLoop();
+            nextStage();
+            timeCheck();            
+            createHero();
+            
+            if (flag) {
+                createEnemy();
+            }
+
+            document.body.addEventListener("keydown", function (e) {
+                console.log(e.keyCode);
+                switch (e.keyCode) {
+                    case 37: moveX(-5); break; //좌
+                    case 38: moveY(-5); break; //위
+                    case 40: moveY(5); break; //아래
+                    case 39: moveX(5); break; //우
+                    case 27: pauseStart(); break; //Pause
+                    case 13: nextStage(); break;
+
+                }
+
+                if (e.keyCode == 80) {
+                    switchOn(); //스페이스바를 눌렀을때만
+                }
+            });
+
+            document.body.addEventListener("keyup", function (e) {
+                switch (e.keyCode) {
+                    case 37: moveX(0); break;
+                    case 38: moveY(0); break;
+                    case 40: moveY(0); break;
+                    case 39: moveX(0); break;
+                }
+
+            });
+        }
+
+        window.addEventListener("load", function () {
+            init();
+        })
+
+    </script>
+
+</head>
+
+<body>
+
+    <div id="wrapper">
+
+        <div id="stage">
+
+            <div id="startBg"></div>
+            <div id="level"></div>
+            <div id="clock"></div>
+            <div id="def"></div>
+            <div id="vic"></div>
+            <div id="pause"></div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>
